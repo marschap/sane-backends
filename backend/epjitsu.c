@@ -4085,6 +4085,9 @@ sane_read (SANE_Handle handle, SANE_Byte * buf, SANE_Int max_len, SANE_Int * len
             DBG (10, "sane_read: side done\n");
             page->done = 1;
         }
+    } else {
+        /* no data to be back, return \0 for fail safe */
+        buf[0] = '\0';
     }
 
     DBG (10, "sane_read: finish si:%d len:%d max:%d\n",s->side,*len,max_len);
