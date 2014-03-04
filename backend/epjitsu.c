@@ -697,9 +697,12 @@ load_fw (struct scanner *s)
     int len = 0;
     unsigned char * buf;
 
-    unsigned char cmd[4];
-    size_t cmdLen;
-    unsigned char stat[2];
+    unsigned char start_cmd[] = { 0x1b, 0x06 };
+    unsigned char data_cmd[] = { 0x01, 0x00, 0x01, 0x00 };
+    unsigned char checksum_cmd[] = { 0x00 };
+    unsigned char reinit_cmd[] = { 0x1b, 0x16 };
+    unsigned char finish_cmd[] = { 0x80 };
+    unsigned char stat[1];
     size_t statLen;
 
     DBG (10, "load_fw: start\n");
@@ -753,14 +756,11 @@ load_fw (struct scanner *s)
     /* firmware upload is in three commands */
 
     /*start/status*/
-    cmd[0] = 0x1b;
-    cmd[1] = 0x06;
-    cmdLen = 2;
-    statLen = 1;
+    statLen = sizeof(stat);
 
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      start_cmd, sizeof(start_cmd),
       NULL, 0,
       stat, &statLen
     );
@@ -776,15 +776,9 @@ load_fw (struct scanner *s)
     }
 
     /*length/data*/
-    cmd[0] = 0x01;
-    cmd[1] = 0x00;
-    cmd[2] = 0x01;
-    cmd[3] = 0x00;
-    cmdLen = 4;
-
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      data_cmd, sizeof(data_cmd),
       buf, FIRMWARE_LENGTH,
       NULL, 0
     );
@@ -795,18 +789,17 @@ load_fw (struct scanner *s)
     }
 
     /*checksum/status*/
-    cmd[0] = 0;
+    checksum_cmd[0] = 0;
     for(i=0;i<FIRMWARE_LENGTH;i++){
-        cmd[0] += buf[i];
+        checksum_cmd[0] += buf[i];
     }
     free(buf);
 
-    cmdLen = 1;
-    statLen = 1;
+    statLen = sizeof(stat);
 
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      checksum_cmd, sizeof(checksum_cmd),
       NULL, 0,
       stat, &statLen
     );
@@ -820,14 +813,11 @@ load_fw (struct scanner *s)
     }
 
     /*reinit*/
-    cmd[0] = 0x1b;
-    cmd[1] = 0x16;
-    cmdLen = 2;
-    statLen = 1;
+    statLen = sizeof(stat);
 
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      reinit_cmd, sizeof(reinit_cmd),
       NULL, 0,
       stat, &statLen
     );
@@ -840,13 +830,12 @@ load_fw (struct scanner *s)
         return SANE_STATUS_IO_ERROR;
     }
 
-    cmd[0] = 0x80;
-    cmdLen = 1;
-    statLen = 1;
+    /*finish*/
+    statLen = sizeof(stat);
 
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      finish_cmd, sizeof(finish_cmd),
       NULL, 0,
       stat, &statLen
     );
@@ -878,22 +867,16 @@ get_stat(struct scanner *s)
 {
     SANE_Status ret = SANE_STATUS_GOOD;
 
-    unsigned char cmd[2];
-    size_t cmdLen;
+    unsigned char cmd[] = { 0x1b, 0x03 };
     unsigned char stat[2];
-    size_t statLen;
+    size_t statLen = sizeof(stat);
 
     DBG (10, "get_stat: start\n");
 
     /*check status*/
-    cmd[0] = 0x1b;
-    cmd[1] = 0x03;
-    cmdLen = 2;
-    statLen = 2;
-
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      cmd, sizeof(cmd),
       NULL, 0,
       stat, &statLen
     );
@@ -915,8 +898,7 @@ get_ident(struct scanner *s)
     int i;
     SANE_Status ret;
 
-    unsigned char cmd[] = {0x1b,0x13};
-    size_t cmdLen = 2;
+    unsigned char cmd[] = { 0x1b, 0x13 };
     unsigned char in[0x20];
     size_t inLen = sizeof(in);
 
@@ -924,7 +906,7 @@ get_ident(struct scanner *s)
 
     ret = do_cmd (
       s, 0,
-      cmd, cmdLen,
+      cmd, sizeof(cmd),
       NULL, 0,
       in, &inLen
     );
@@ -2641,21 +2623,18 @@ static SANE_Status
 coarsecal_send_cal(struct scanner *s, unsigned char *pay)
 {
     SANE_Status ret = SANE_STATUS_GOOD;
-    unsigned char cmd[2];
+    unsigned char cmd[] = { 0x1b, 0xc6 };
     unsigned char stat[1];
-    size_t cmdLen,statLen,payLen;
+    size_t statLen,payLen;
 
     DBG (5, "coarsecal_send_cal: start\n");
     /* send coarse cal (c6) */
-    cmd[0] = 0x1b;
-    cmd[1] = 0xc6;
-    cmdLen = 2;
     stat[0] = 0;
-    statLen = 1;
+    statLen = sizeof(stat);
 
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      cmd, sizeof(cmd),
       NULL, 0,
       stat, &statLen
     );
@@ -2670,7 +2649,7 @@ coarsecal_send_cal(struct scanner *s, unsigned char *pay)
 
     /*send coarse cal payload*/
     stat[0] = 0;
-    statLen = 1;
+    statLen = sizeof(stat);
     payLen = 28;
 
     ret = do_cmd(
@@ -2696,22 +2675,17 @@ static SANE_Status
 coarsecal_get_line(struct scanner *s, struct image *img)
 {
     SANE_Status ret = SANE_STATUS_GOOD;
-    unsigned char cmd[2];
-    unsigned char stat[1];
-    size_t cmdLen,statLen;
+
+    unsigned char cmd[] = { 0x1b, 0xd2 };
+    unsigned char stat[] = { 0x00 };
+    size_t statLen = sizeof(stat);
 
     DBG (5, "coarsecal_get_line: start\n");
 
     /* send scan d2 command */
-    cmd[0] = 0x1b;
-    cmd[1] = 0xd2;
-    cmdLen = 2;
-    stat[0] = 0;
-    statLen = 1;
-
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      cmd, sizeof(cmd),
       NULL, 0,
       stat, &statLen
     );
@@ -3004,11 +2978,10 @@ finecal_send_cal(struct scanner *s)
 {
     SANE_Status ret = SANE_STATUS_GOOD;
 
-    size_t cmdLen = 2;
-    unsigned char cmd[2];
-
-    size_t statLen = 1;
-    unsigned char stat[2];
+    unsigned char cal1_cmd[] = { 0x1b, 0xc3 };
+    unsigned char cal2_cmd[] = { 0x1b, 0xc4 };
+    unsigned char stat[1];
+    size_t statLen = sizeof(stat);
 
     int i, j, k;
     unsigned char *p_out, *p_in = s->sendcal.buffer;
@@ -3076,14 +3049,12 @@ finecal_send_cal(struct scanner *s)
     }
 
     /*first unknown cal block*/
-    cmd[0] = 0x1b;
-    cmd[1] = 0xc3;
     stat[0] = 0;
-    statLen = 1;
+    statLen = sizeof(stat);
 
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      cal1_cmd, sizeof(cal1_cmd),
       NULL, 0,
       stat, &statLen
     );
@@ -3098,7 +3069,7 @@ finecal_send_cal(struct scanner *s)
 
     /*send header*/
     /*send payload*/
-    statLen = 1;
+    statLen = sizeof(stat);
 
     ret = do_cmd(
       s, 0,
@@ -3117,12 +3088,11 @@ finecal_send_cal(struct scanner *s)
     }
 
     /*second unknown cal block*/
-    cmd[1] = 0xc4;
-    statLen = 1;
+    statLen = sizeof(stat);
 
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      cal2_cmd, sizeof(cal2_cmd),
       NULL, 0,
       stat, &statLen
     );
@@ -3138,7 +3108,7 @@ finecal_send_cal(struct scanner *s)
 
     /*send header*/
     /*send payload*/
-    statLen = 1;
+    statLen = sizeof(stat);
 
     ret = do_cmd(
       s, 0,
@@ -3164,11 +3134,9 @@ finecal_get_line(struct scanner *s, struct image *img)
 {
     SANE_Status ret = SANE_STATUS_GOOD;
 
-    size_t cmdLen = 2;
-    unsigned char cmd[2];
-
-    size_t statLen = 1;
-    unsigned char stat[2];
+    unsigned char cmd[] = { 0x1b, 0xd2 };
+    unsigned char stat[] = { 0x00 };
+    size_t statLen = sizeof(stat);
 
     int round_offset = img->height / 2;
     int i, j, k;
@@ -3181,14 +3149,9 @@ finecal_get_line(struct scanner *s, struct image *img)
     }
 
     /* send scan d2 command */
-    cmd[0] = 0x1b;
-    cmd[1] = 0xd2;
-    stat[0] = 0;
-    statLen = 1;
-
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      cmd, sizeof(cmd),
       NULL, 0,
       stat, &statLen
     );
@@ -3437,20 +3400,17 @@ static SANE_Status
 lamp(struct scanner *s, unsigned char set)
 {
     SANE_Status ret = SANE_STATUS_GOOD;
-    unsigned char cmd[2];
-    size_t cmdLen = 2;
-    unsigned char stat[1];
-    size_t statLen = 1;
+    unsigned char cmd[] = { 0x1b, 0xd0 };
+    unsigned char set_cmd[] = { set };		/* C99: run-time initialization */
+    unsigned char stat[] = { 0x00 };
+    size_t statLen = sizeof(stat);
 
     DBG (10, "lamp: start (%d)\n", set);
 
     /*send cmd*/
-    cmd[0] = 0x1b;
-    cmd[1] = 0xd0;
-
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      cmd, sizeof(cmd),
       NULL, 0,
       stat, &statLen
     );
@@ -3464,13 +3424,11 @@ lamp(struct scanner *s, unsigned char set)
     }
 
     /*send payload*/
-    cmd[0] = set;
-    cmdLen = 1;
-    statLen = 1;
+    statLen = sizeof(stat);
 
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      set_cmd, sizeof(set_cmd),
       NULL, 0,
       stat, &statLen
     );
@@ -3492,9 +3450,8 @@ set_window(struct scanner *s, int window)
 {
     SANE_Status ret = SANE_STATUS_GOOD;
 
-    unsigned char cmd[] = {0x1b, 0xd1};
-    size_t cmdLen = sizeof(cmd);
-    unsigned char stat[] = {0};
+    unsigned char cmd[] = { 0x1b, 0xd1 };
+    unsigned char stat[] = { 0x00 };
     size_t statLen = sizeof(stat);
     unsigned char * payload;
     size_t paylen = SET_WINDOW_LEN;
@@ -3527,7 +3484,7 @@ set_window(struct scanner *s, int window)
     /*send cmd*/
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      cmd, sizeof(cmd),
       NULL, 0,
       stat, &statLen
     );
@@ -3541,7 +3498,7 @@ set_window(struct scanner *s, int window)
     }
 
     /*send payload*/
-    statLen = 1;
+    statLen = sizeof(stat);
 
     ret = do_cmd(
       s, 0,
@@ -3592,10 +3549,9 @@ send_lut (struct scanner *s)
 {
     SANE_Status ret=SANE_STATUS_GOOD;
 
-    unsigned char cmd[] = {0x1b, 0xc5};
-    size_t cmdLen = 2;
-    unsigned char stat[1];
-    size_t statLen = 1;
+    unsigned char cmd[] = { 0x1b, 0xc5 };
+    unsigned char stat[] = { 0x00 };
+    size_t statLen = sizeof(stat);
     unsigned char *out;
     size_t outLen;
 
@@ -3692,7 +3648,7 @@ send_lut (struct scanner *s)
 
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      cmd, sizeof(cmd),
       NULL, 0,
       stat, &statLen
     );
@@ -3705,7 +3661,7 @@ send_lut (struct scanner *s)
         return SANE_STATUS_IO_ERROR;
     }
 
-    statLen = 1;
+    statLen = sizeof(stat);
     ret = do_cmd(
       s, 0,
       out, outLen,
@@ -3735,20 +3691,15 @@ get_hardware_status (struct scanner *s)
 
   /* only run this once every second */
   if (s->last_ghs < time(NULL)) {
-
-    unsigned char cmd[2];
-    size_t cmdLen = sizeof(cmd);
+    unsigned char cmd[] = { 0x1b, 0x33 };
     unsigned char pay[4];
     size_t payLen = sizeof(pay);
 
     DBG (15, "get_hardware_status: running\n");
 
-    cmd[0] = 0x1b;
-    cmd[1] = 0x33;
-
     ret = do_cmd(
       s, 0,
-      cmd, cmdLen,
+      cmd, sizeof(cmd),
       NULL, 0,
       pay, &payLen
     );
@@ -3779,12 +3730,10 @@ object_position(struct scanner *s, int ingest)
 {
     SANE_Status ret = SANE_STATUS_GOOD;
     int i;
-    unsigned char cmd[2];
-    size_t cmdLen = sizeof(cmd);
+    unsigned char cmd[] = { 0x1b, 0xd4 };
+    unsigned char pay[1] = { (unsigned char) ingest };		/* C99: run-time initialization */
     unsigned char stat[1];
     size_t statLen = sizeof(stat);
-    unsigned char pay[2];
-    size_t payLen = sizeof(pay);
 
     DBG (10, "object_position: start\n");
 
@@ -3792,13 +3741,11 @@ object_position(struct scanner *s, int ingest)
 
     while(i--){
         /*send paper load cmd*/
-        cmd[0] = 0x1b;
-        cmd[1] = 0xd4;
-        statLen = 1;
+        statLen = sizeof(stat);
 
         ret = do_cmd(
           s, 0,
-          cmd, cmdLen,
+          cmd, sizeof(cmd),
           NULL, 0,
           stat, &statLen
         );
@@ -3812,13 +3759,11 @@ object_position(struct scanner *s, int ingest)
         }
 
         /*send payload*/
-        statLen = 1;
-        payLen = 1;
-        pay[0] = ingest;
+        statLen = sizeof(stat);
 
         ret = do_cmd(
           s, 0,
-          pay, payLen,
+          pay, sizeof(pay),
           NULL, 0,
           stat, &statLen
         );
@@ -3849,16 +3794,14 @@ static SANE_Status
 scan(struct scanner *s)
 {
     SANE_Status ret=SANE_STATUS_GOOD;
-    unsigned char cmd[] = {0x1b, 0xd2};
-    size_t cmdLen = 2;
+    unsigned char fx_cmd[] = { 0x1b, 0xd2 };
+    unsigned char sx_cmd[] = { 0x1b, 0xd6 };
+    unsigned char *cmd = (s->model == MODEL_FI60F || s->model == MODEL_FI65F) ? fx_cmd : sx_cmd;
+    size_t cmdLen = 2; /* 2 == sizeof(fx_cmd) == sizeof(sx_cmd) */
     unsigned char stat[1];
-    size_t statLen = 1;
+    size_t statLen = sizeof(stat);
 
     DBG (10, "scan: start\n");
-
-    if(s->model == MODEL_S300 || s->model == MODEL_S1100 || s->model == MODEL_S1300i){
-        cmd[1] = 0xd6;
-    }
 
     ret = do_cmd(
       s, 0,
@@ -3955,16 +3898,15 @@ sane_read (SANE_Handle handle, SANE_Byte * buf, SANE_Int max_len, SANE_Int * len
             /* send d3 cmd for S300, S1100, S1300 */
             if(s->model == MODEL_S300 || s->model == MODEL_S1100 || s->model == MODEL_S1300i)
             {
-                unsigned char cmd[] = {0x1b, 0xd3};
-                size_t cmdLen = 2;
+                unsigned char cmd[] = { 0x1b, 0xd3 };
                 unsigned char stat[1];
-                size_t statLen = 1;
+                size_t statLen = sizeof(stat);
 
                 DBG (15, "sane_read: d3\n");
 
                 ret = do_cmd(
                   s, 0,
-                  cmd, cmdLen,
+                  cmd, sizeof(cmd),
                   NULL, 0,
                   stat, &statLen
                 );
@@ -3998,14 +3940,13 @@ sane_read (SANE_Handle handle, SANE_Byte * buf, SANE_Int max_len, SANE_Int * len
             /* get the 0x43 cmd for the S300, S1100, S1300  */
             if(s->model == MODEL_S300 || s->model == MODEL_S1100 || s->model == MODEL_S1300i){
 
-                unsigned char cmd[] = {0x1b, 0x43};
-                size_t cmdLen = 2;
+                unsigned char cmd[] = { 0x1b, 0x43 };
                 unsigned char in[10];
-                size_t inLen = 10;
+                size_t inLen = sizeof(in);
 
                 ret = do_cmd(
                   s, 0,
-                  cmd, cmdLen,
+                  cmd, sizeof(cmd),
                   NULL, 0,
                   in, &inLen
                 );
@@ -4100,20 +4041,15 @@ six5 (struct scanner *s)
 {
   SANE_Status ret = SANE_STATUS_GOOD;
 
-  unsigned char cmd[2];
-  size_t cmdLen = sizeof(cmd);
+  unsigned char cmd[] = { 0x1b, 0x65 };
   unsigned char stat[1];
   size_t statLen = sizeof(stat);
 
   DBG (10, "six5: start\n");
 
-  cmd[0] = 0x1b;
-  cmd[1] = 0x65;
-  statLen = 1;
-
   ret = do_cmd(
     s, 0,
-    cmd, cmdLen,
+    cmd, sizeof(cmd),
     NULL, 0,
     stat, &statLen
   );
