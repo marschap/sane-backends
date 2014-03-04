@@ -207,6 +207,12 @@
 #define DEBUG 1
 #define BUILD 31
 
+#ifndef MIN
+  #define MIN(a,b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef MAX
+  #define MAX(a,b) ((a) > (b) ? (a) : (b))
+#endif
 #ifndef MAX3
   #define MAX3(a,b,c) ((a) > (b) ? ((a) > (c) ? a : c) : ((b) > (c) ? b : c))
 #endif
@@ -1996,22 +2002,19 @@ change_params(struct scanner *s)
     /* height */
     if (s->tl_y > s->max_y - s->min_y)
        s->tl_y = s->max_y - s->min_y - s->adf_height_padding;
-    if (s->tl_y + s->page_height > s->max_y - s->adf_height_padding)
-       s->page_height = s->max_y - s->adf_height_padding - s->tl_y;
-    if (s->page_height < s->min_y && s->page_height > 0)
-       s->page_height = s->min_y;
+    s->page_height = MIN(s->page_height, s->max_y - s->adf_height_padding - s->tl_y);
+    if (s->page_height > 0)
+       s->page_height = MAX(s->page_height, s->min_y);
     if (s->tl_y + s->page_height > s->max_y)
        s->tl_y = s->max_y - s->adf_height_padding - s->page_height;
-    if (s->tl_y < 0)
-       s->tl_y = 0;
+    s->tl_y = MAX(s->tl_y, 0);
 
     s->br_y = (s->page_height > 0) ? s->tl_y + s->page_height : s->max_y;
 
     /*width*/
-    if (s->page_width > s->max_x)
-       s->page_width = s->max_x;
-    else if (s->page_width < s->min_x)
-       s->page_width = s->min_x;
+    s->page_width = MIN(s->page_width, s->max_x);
+    s->page_width = MAX(s->page_width, s->min_x);
+
     s->tl_x = (s->max_x - s->page_width)/2;
     s->br_x = (s->max_x + s->page_width)/2;
     
@@ -2249,12 +2252,8 @@ load_lut (unsigned char * lut,
   for(i=0;i<=max_in_val;i++){
     j = rise*i + shift;
 
-    if(j<out_min){
-      j=out_min;
-    }
-    else if(j>out_max){
-      j=out_max;
-    }
+    j = MAX(j, out_min);
+    j = MIN(j, out_max);
 
     *lut_p=j;
     lut_p++;
@@ -3288,8 +3287,8 @@ finecal(struct scanner *s)
                     else
                         s->sendcal.buffer[idx * 2 + 1] = newgain;
                     /* update statistics */
-                    if (pixvalue < min_value[i][k]) min_value[i][k] = pixvalue;
-                    if (pixvalue > max_value[i][k]) max_value[i][k] = pixvalue;
+                    min_value[i][k] = MIN(min_value[i][k], pixvalue);
+                    max_value[i][k] = MAX(max_value[i][k], pixvalue);
                     avg_value[i][k] += pixerror;
                     variance[i][k] += (pixerror * pixerror);
                     idx++;
@@ -3554,13 +3553,8 @@ send_lut (struct scanner *s)
     for(i=0;i<width;i++){
       j=slope*i + offset + b;
   
-      if(j<0){
-        j=0;
-      }
-  
-      if(j>(height-1)){
-        j=height-1;
-      }
+      j = MAX(j, 0);
+      j = MIN(j, height-1);
 
         if (s->model == MODEL_S1100){
             /*only one table, be order*/
@@ -3959,9 +3953,7 @@ sane_read (SANE_Handle handle, SANE_Byte * buf, SANE_Int max_len, SANE_Int * len
     }
 
     *len = page->bytes_scanned - page->bytes_read;
-    if(*len > max_len){
-        *len = max_len;
-    }
+    *len = MIN(*len, max_len);
 
     if(*len){
         DBG (10, "sane_read: copy rx:%d tx:%d tot:%d len:%d\n",
@@ -4217,8 +4209,8 @@ read_from_scanner(struct scanner *s, struct transfer * tp)
     size_t bufLen;
 
     /* determine amount to ask for, S1300i wants big requests */
-    if(bytes > remainBlock && s->model != MODEL_S1300i){
-        bytes = remainBlock;
+    if(s->model != MODEL_S1300i){
+        bytes = MIN(bytes, remainBlock);
     }
 
     if (tp->image == NULL)
@@ -4799,8 +4791,7 @@ maxStringSize (const SANE_String_Const strings[])
 
   for (i = 0; strings[i]; ++i) {
     size = strlen (strings[i]) + 1;
-    if (size > max_size)
-      max_size = size;
+    max_size = MAX(max_size, size);
   }
 
   return max_size;
