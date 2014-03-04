@@ -1357,10 +1357,9 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     opt->desc = SANE_DESC_SCAN;
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
-    if (s->has_adf)
-      opt->cap = SANE_CAP_SOFT_DETECT | SANE_CAP_HARD_SELECT | SANE_CAP_ADVANCED;
-    else
-      opt->cap = SANE_CAP_INACTIVE;
+    opt->cap = (s->has_adf)
+               ? SANE_CAP_SOFT_DETECT | SANE_CAP_HARD_SELECT | SANE_CAP_ADVANCED
+               : SANE_CAP_INACTIVE;
   }
 
   if(option==OPT_HOPPER){
@@ -1369,10 +1368,9 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     opt->desc = SANE_DESC_PAGE_LOADED;
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
-    if (s->has_adf)
-      opt->cap = SANE_CAP_SOFT_DETECT | SANE_CAP_HARD_SELECT | SANE_CAP_ADVANCED;
-    else
-      opt->cap = SANE_CAP_INACTIVE;
+    opt->cap = (s->has_adf)
+               ? SANE_CAP_SOFT_DETECT | SANE_CAP_HARD_SELECT | SANE_CAP_ADVANCED
+               : SANE_CAP_INACTIVE;
   }
 
   if(option==OPT_TOP){
@@ -1381,10 +1379,9 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     opt->desc = "Paper is pulled partly into adf";
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
-    if (s->has_adf)
-      opt->cap = SANE_CAP_SOFT_DETECT | SANE_CAP_HARD_SELECT | SANE_CAP_ADVANCED;
-    else
-      opt->cap = SANE_CAP_INACTIVE;
+    opt->cap = (s->has_adf)
+               ? SANE_CAP_SOFT_DETECT | SANE_CAP_HARD_SELECT | SANE_CAP_ADVANCED
+               : SANE_CAP_INACTIVE;
   }
 
   if(option==OPT_ADF_OPEN){
@@ -1393,10 +1390,9 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     opt->desc = SANE_DESC_COVER_OPEN;
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
-    if (s->has_adf)
-      opt->cap = SANE_CAP_SOFT_DETECT | SANE_CAP_HARD_SELECT | SANE_CAP_ADVANCED;
-    else
-      opt->cap = SANE_CAP_INACTIVE;
+    opt->cap = (s->has_adf)
+               ? SANE_CAP_SOFT_DETECT | SANE_CAP_HARD_SELECT | SANE_CAP_ADVANCED
+               : SANE_CAP_INACTIVE;
   }
 
   if(option==OPT_SLEEP){
@@ -1405,10 +1401,9 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     opt->desc = "Scanner in power saving mode";
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
-    if (s->has_adf)
-      opt->cap = SANE_CAP_SOFT_DETECT | SANE_CAP_HARD_SELECT | SANE_CAP_ADVANCED;
-    else
-      opt->cap = SANE_CAP_INACTIVE;
+    opt->cap = (s->has_adf)
+               ? SANE_CAP_SOFT_DETECT | SANE_CAP_HARD_SELECT | SANE_CAP_ADVANCED
+               : SANE_CAP_INACTIVE;
   }
 
   return opt;
@@ -1615,18 +1610,10 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
 
         /* Mode Group */
         case OPT_SOURCE:
-          if (!strcmp (val, STRING_ADFFRONT)) {
-            tmp = SOURCE_ADF_FRONT;
-          }
-          else if (!strcmp (val, STRING_ADFBACK)) {
-            tmp = SOURCE_ADF_BACK;
-          }
-          else if (!strcmp (val, STRING_ADFDUPLEX)) {
-            tmp = SOURCE_ADF_DUPLEX;
-          }
-          else{
-            tmp = SOURCE_FLATBED;
-          }
+          tmp = (!strcmp(val, STRING_ADFFRONT))  ? SOURCE_ADF_FRONT
+              : (!strcmp(val, STRING_ADFBACK))   ? SOURCE_ADF_BACK
+              : (!strcmp(val, STRING_ADFDUPLEX)) ? SOURCE_ADF_DUPLEX
+              : /* default */                      SOURCE_FLATBED;
 
           if (s->source == tmp)
               return SANE_STATUS_GOOD;
@@ -1636,15 +1623,9 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
           return SANE_STATUS_GOOD;
 
         case OPT_MODE:
-          if (!strcmp (val, STRING_LINEART)) {
-            tmp = MODE_LINEART;
-          }
-          else if (!strcmp (val, STRING_GRAYSCALE)) {
-            tmp = MODE_GRAYSCALE;
-          }
-          else{
-            tmp = MODE_COLOR;
-          }
+          tmp = (!strcmp(val, STRING_LINEART))   ? MODE_LINEART
+              : (!strcmp(val, STRING_GRAYSCALE)) ? MODE_GRAYSCALE
+              : /* default */                      MODE_COLOR;
 
           if (tmp == s->mode)
               return SANE_STATUS_GOOD;
@@ -2024,12 +2005,7 @@ change_params(struct scanner *s)
     if (s->tl_y < 0)
        s->tl_y = 0;
 
-    if (s->page_height > 0) {
-        s->br_y = s->tl_y + s->page_height;
-    }
-    else {
-        s->br_y = s->max_y;
-    }
+    s->br_y = (s->page_height > 0) ? s->tl_y + s->page_height : s->max_y;
 
     /*width*/
     if (s->page_width > s->max_x)
@@ -2093,16 +2069,11 @@ change_params(struct scanner *s)
     s->fullscan.mode = settings[i].mode;
     s->fullscan.x_res = settings[i].x_res;
     s->fullscan.y_res = settings[i].y_res;
-    if(s->source == SOURCE_FLATBED || !s->page_height)
-    {
-      /* flatbed and adf in autodetect always ask for all*/
-      s->fullscan.height = SCANNER_UNIT_TO_PIX(s->max_y, s->fullscan.y_res);
-    }
-    else
-    {
-      /* adf with specified paper size requires padding on top of page_height (~1/2in) */
-      s->fullscan.height = SCANNER_UNIT_TO_PIX((s->page_height + s->tl_y + s->adf_height_padding), s->fullscan.y_res);
-    }
+    s->fullscan.height = (s->source == SOURCE_FLATBED || !s->page_height)
+                         /* flatbed and adf in autodetect always ask for all*/
+                         ? SCANNER_UNIT_TO_PIX(s->max_y, s->fullscan.y_res)
+                         /* adf with specified paper size requires padding on top (~1/2in) */
+                         : SCANNER_UNIT_TO_PIX((s->page_height + s->tl_y + s->adf_height_padding), s->fullscan.y_res);
 
     /*=============================================================*/
     /* set up the input block raw struct */
@@ -2170,14 +2141,9 @@ change_params(struct scanner *s)
     }
 
     /* ADF front need to remove padding header */
-    if (s->source != SOURCE_FLATBED)
-    {
-        s->front.y_skip_offset = SCANNER_UNIT_TO_PIX(s->tl_y+s->adf_height_padding, s->fullscan.y_res);
-    }
-    else
-    {
-        s->front.y_skip_offset = SCANNER_UNIT_TO_PIX(s->tl_y, s->fullscan.y_res);
-    }
+    s->front.y_skip_offset = (s->source != SOURCE_FLATBED)
+                             ? SCANNER_UNIT_TO_PIX(s->tl_y+s->adf_height_padding, s->fullscan.y_res)
+                             : SCANNER_UNIT_TO_PIX(s->tl_y, s->fullscan.y_res);
 
     s->front.pages = 1;
     s->front.buffer = NULL;
@@ -2330,12 +2296,7 @@ sane_get_parameters (SANE_Handle handle, SANE_Parameters * params)
 
   params->pixels_per_line = s->front.width_pix;
   params->bytes_per_line = s->front.width_bytes;
-  if(!s->page_height){
-    params->lines = -1;
-  }
-  else{
-    params->lines = s->front.height;
-  }
+  params->lines = (!s->page_height) ? -1 : s->front.height;
   params->last_frame = 1;
 
   if (s->mode == MODE_COLOR) {
@@ -2376,12 +2337,7 @@ sane_start (SANE_Handle handle)
 
     /* set side marker on first page */
     if(!s->started){
-      if(s->source == SOURCE_ADF_BACK){
-        s->side = SIDE_BACK;
-      }
-      else{
-        s->side = SIDE_FRONT;
-      }
+      s->side = (s->source == SOURCE_ADF_BACK) ? SIDE_BACK : SIDE_FRONT;
     }
     /* if already running, duplex needs to switch sides */
     else if(s->source == SOURCE_ADF_DUPLEX){
@@ -3214,13 +3170,9 @@ finecal(struct scanner *s)
 
     DBG (10, "finecal: start\n");
 
-    if (s->model == MODEL_S300 || s->model == MODEL_S1300i) { /* S300, S1300 */
-        max_pages = 2;
-    }
-    else /* fi-60f, S1100 */
-    {
-        max_pages = 1;
-    }
+    max_pages = (s->model == MODEL_S300 || s->model == MODEL_S1300i)
+                ? 2    /* S300, S1300, S1300i */
+                : 1;   /* fi-60f, fi-65f, S1100 */
 
     /* set fine dark offset to 0 and fix all fine gains to lowest parameter (0xFF) */
     for (i = 0; i < s->sendcal.width_bytes * s->sendcal.pages / 2; i++)
@@ -3268,10 +3220,7 @@ finecal(struct scanner *s)
             {
                 int value_delta = s->lightcal.buffer[idx] - s->darkcal.buffer[idx];
                 /* limit this slope to 1 or less, to avoid overshoot if the lightcal ref input is clipped at 255 */
-                if (value_delta < gain_delta)
-                    gain_slope[idx] = -1.0;
-                else
-                    gain_slope[idx] = (float) -gain_delta / value_delta;
+                gain_slope[idx] = (value_delta < gain_delta) ? -1.0 : (float) -gain_delta / value_delta;
                 idx++;
             }
         }
@@ -4425,10 +4374,7 @@ copy_block_to_page(struct scanner *s,int side)
             {
                 s->dt.buffer[j] = (r + g + b) / 3; /* stores dt temp image buffer and binarize afterward */
             }
-            if (line_reverse)
-                p_in -= 3;
-            else
-                p_in += 3;
+            p_in += (line_reverse) ? -3 : 3;
            }
          }
 
@@ -4453,18 +4399,14 @@ copy_block_to_page(struct scanner *s,int side)
              {
                  s->dt.buffer[j] = *p_in; /* stores dt temp image buffer and binarize afterward */
              }
-             if (line_reverse)
-                 p_in--;
-             else
-                 p_in++;
+             p_in += (line_reverse) ? -1 : 1;
            }
         }
 
 	/* skip non-transfer pixels in block image buffer */
-        if (line_reverse)
-            p_in -= page->image->x_offset_bytes;
-        else
-            p_in += page->image->x_offset_bytes;
+        p_in += (line_reverse)
+                ? -page->image->x_offset_bytes
+                :  page->image->x_offset_bytes;
 
         /* for MODE_LINEART, binarize the gray line stored in the temp image buffer(dt) */
         /* bacause dt.width = page_width, we pass page_width */
@@ -4519,10 +4461,9 @@ binarize_line(struct scanner *s, unsigned char *lineOut, int width)
         }
 
         /*use average to lookup threshold*/
-        if (s->dt.buffer[j] > thresh)
-          *lineOut &= ~mask;     /* white */
-        else
-          *lineOut |= mask;      /* black */
+        *lineOut = (s->dt.buffer[j] > thresh)
+                   ? (*lineOut & ~mask)
+                   : (*lineOut | mask);
 
         if (offset == 7)
             lineOut++;
