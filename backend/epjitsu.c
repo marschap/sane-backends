@@ -4867,11 +4867,7 @@ static int
 get_page_width(struct scanner *s)
 {
   /* scanner max for fb */
-  if(s->source == SOURCE_FLATBED){
-      return s->max_x;
-  }
-
-  return s->page_width;
+  return (s->source == SOURCE_FLATBED) ? s->max_x : s->page_width;
 }
 
 /* s->page_height stores the user setting
@@ -4883,9 +4879,5 @@ static int
 get_page_height(struct scanner *s)
 {
   /* scanner max for fb */
-  if(s->source == SOURCE_FLATBED){
-      return s->max_y;
-  }
-
-  return s->page_height;
+  return (s->source == SOURCE_FLATBED) ? s->max_y : s->page_height;
 }
