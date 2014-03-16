@@ -2951,6 +2951,8 @@ finecal_send_cal(struct scanner *s)
     unsigned char *p_out, *p_in = s->sendcal.buffer;
     int planes;
 
+    DBG (10, "finecal_send_cal: start\n");
+
     if(s->model == MODEL_FI60F || s->model == MODEL_FI65F)
       planes = 3;
     if(s->model == MODEL_S300 || s->model == MODEL_S1300i)
@@ -3090,6 +3092,7 @@ finecal_send_cal(struct scanner *s)
         return SANE_STATUS_IO_ERROR;
     }
 
+    DBG (10, "finecal_send_cal: finish\n");
     return ret;
 }
 
@@ -3104,6 +3107,8 @@ finecal_get_line(struct scanner *s, struct image *img)
 
     int round_offset = img->height / 2;
     int i, j, k;
+
+    DBG (10, "finecal_get_line: start\n");
 
     /* ask for 16 lines */
     ret = set_window(s, WINDOW_FINECAL);
@@ -3156,6 +3161,8 @@ finecal_get_line(struct scanner *s, struct image *img)
             avgpix[j] = (total + round_offset) / img->height;
         }
     }
+
+    DBG (10, "finecal_get_line: finish\n");
     return ret;
 }
 
