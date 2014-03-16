@@ -2614,7 +2614,7 @@ coarsecal_send_cal(struct scanner *s, unsigned char *pay)
     unsigned char stat[1];
     size_t statLen,payLen;
     
-    DBG (5, "coarsecal_send_cal: start\n");
+    DBG (10, "coarsecal_send_cal: start\n");
     /* send coarse cal (c6) */
     stat[0] = 0;
     statLen = sizeof(stat);
@@ -2654,7 +2654,7 @@ coarsecal_send_cal(struct scanner *s, unsigned char *pay)
         return SANE_STATUS_IO_ERROR;
     }
 
-    DBG (5, "coarsecal_send_cal: finish\n");
+    DBG (10, "coarsecal_send_cal: finish\n");
     return ret;
 }
 
@@ -2667,7 +2667,7 @@ coarsecal_get_line(struct scanner *s, struct image *img)
     unsigned char stat[] = { 0x00 };
     size_t statLen = sizeof(stat);
 
-    DBG (5, "coarsecal_get_line: start\n");
+    DBG (10, "coarsecal_get_line: start\n");
 
     /* send scan d2 command */
     ret = do_cmd(
@@ -2698,7 +2698,7 @@ coarsecal_get_line(struct scanner *s, struct image *img)
     /* convert the raw data into normal packed pixel data */
     descramble_raw(s, &s->cal_image);
 
-    DBG (5, "coarsecal_get_line: finish\n");
+    DBG (10, "coarsecal_get_line: finish\n");
     return ret;
 }
 
@@ -2710,7 +2710,7 @@ coarsecal_dark(struct scanner *s, unsigned char *pay)
     int try_count, cal_good[2], x, j;
     int param[2], zcount[2], high_param[2], low_param[2], avg[2], maxval[2];
 
-    DBG (5, "coarsecal_dark: start\n");
+    DBG (10, "coarsecal_dark: start\n");
 
     /* dark cal, lamp off */
     ret = lamp(s,0);
@@ -2796,7 +2796,7 @@ coarsecal_dark(struct scanner *s, unsigned char *pay)
 
     } /* continue looping for up to 8 tries */
 
-    DBG (5, "coarsecal_dark: finish\n");
+    DBG (10, "coarsecal_dark: finish\n");
     return ret;
 }
 
@@ -2809,7 +2809,7 @@ coarsecal_light(struct scanner *s, unsigned char *pay)
     int param[2], zcount[2], high_param[2], low_param[2], avg[2];
     int rgb_avg[2][3], rgb_hicount[2][3];
 
-    DBG (5, "coarsecal_light: start\n");
+    DBG (10, "coarsecal_light: start\n");
 
     /* light cal, lamp on */
     ret = lamp(s,1);
@@ -2913,7 +2913,7 @@ coarsecal_light(struct scanner *s, unsigned char *pay)
         }
     }
 
-    DBG (5, "coarsecal_light: finish\n");
+    DBG (10, "coarsecal_light: finish\n");
     return ret;
 }
 
