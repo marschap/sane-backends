@@ -503,6 +503,15 @@ attach_one (const char *name)
         return ret;
     }
 
+    /* initialize with "sane" user settings */
+    ret = init_user(s);
+    if (ret != SANE_STATUS_GOOD) {
+        disconnect_fd(s);
+        free (s);
+        DBG (5, "attach_one: user failed\n");
+        return ret;
+    }
+
     /* set SANE option 'values' to good defaults */
     ret = init_options(s);
     if (ret != SANE_STATUS_GOOD) {
@@ -831,15 +840,6 @@ init_model (struct scanner *s)
         s->white_factor[0] = 1.0;
         s->white_factor[1] = 0.93;
         s->white_factor[2] = 0.98;
-
-        s->source = SOURCE_ADF_FRONT;
-        s->mode = MODE_LINEART;
-        s->resolution = 300;
-        s->page_height = 11.5 * 1200;
-        s->page_width  = 8.5 * 1200;
-
-        s->threshold = 120;
-        s->threshold_curve = 55;
     }
     else if (strstr (s->sane.model, "S300") || strstr (s->sane.model, "S1300")){
         unsigned char stat;
@@ -863,15 +863,6 @@ init_model (struct scanner *s)
         s->white_factor[0] = 1.0;
         s->white_factor[1] = 0.93;
         s->white_factor[2] = 0.98;
-
-        s->source = SOURCE_ADF_FRONT;
-        s->mode = MODE_LINEART;
-        s->resolution = 300;
-        s->page_height = 11.5 * 1200;
-        s->page_width  = 8.5 * 1200;
-
-        s->threshold = 120;
-        s->threshold_curve = 55;
     }
     else if (strstr (s->sane.model, "S1100")){
         DBG (15, "init_model: Found S1100\n");
@@ -887,15 +878,6 @@ init_model (struct scanner *s)
         s->white_factor[0] = 0.95;
         s->white_factor[1] = 1.0;
         s->white_factor[2] = 1.0;
-
-        s->source = SOURCE_ADF_FRONT;
-        s->mode = MODE_LINEART;
-        s->resolution = 300;
-        s->page_height = 11.5 * 1200;
-        s->page_width  = 8.5 * 1200;
-
-        s->threshold = 120;
-        s->threshold_curve = 55;
     }
     else if (strstr (s->sane.model, "fi-60F")){
         DBG (15, "init_model: Found fi-60F\n");
@@ -909,15 +891,6 @@ init_model (struct scanner *s)
         s->white_factor[0] = 1.0;
         s->white_factor[1] = 0.93;
         s->white_factor[2] = 0.98;
-
-        s->source = SOURCE_FLATBED;
-        s->mode = MODE_COLOR;
-        s->resolution = 300;
-        s->page_height = 5.83 * 1200;
-        s->page_width  = 4.1 * 1200;
-
-        s->threshold = 120;
-        s->threshold_curve = 55;
     }
 
     else if (strstr (s->sane.model, "fi-65F")){
@@ -932,21 +905,44 @@ init_model (struct scanner *s)
         s->white_factor[0] = 1.0;
         s->white_factor[1] = 0.93;
         s->white_factor[2] = 0.98;
-
-        s->source = SOURCE_FLATBED;
-        s->mode = MODE_COLOR;
-        s->resolution = 300;
-        s->page_height = 5.83 * 1200;
-        s->page_width  = 4.1 * 1200;
-
-        s->threshold = 120;
-        s->threshold_curve = 55;
     }
     else{
         DBG (15, "init_model: Found other\n");
     }
 
     DBG(10, "init_model: finish\n");
+
+    return SANE_STATUS_GOOD;
+}
+
+/*
+ * set good default user option values.
+ * struct is already initialized to 0.
+ */
+static SANE_Status
+init_user (struct scanner *s)
+{
+    DBG (10, "init_user: start\n");
+
+    /* source */
+    s->source = (s->has_fb) ? SOURCE_FLATBED : SOURCE_ADF_FRONT;
+
+    /* scan mode */
+    s->mode = MODE_COLOR;
+
+    /*res*/
+    s->resolution = 600;		/* S1300i fails with anything else */
+
+    /* page width A4 */
+    s->page_width = FIXED_MM_TO_SCANNER_UNIT(210);
+
+    /* page height A4 */
+    s->page_height = FIXED_MM_TO_SCANNER_UNIT(297);
+
+    s->threshold = 120;
+    s->threshold_curve = 55;
+
+    DBG (10, "init_user: finish\n");
 
     return SANE_STATUS_GOOD;
 }
