@@ -1038,6 +1038,16 @@ sane_open (SANE_String_Const name, SANE_Handle * handle)
         return ret;
     }
 
+    if (s->model == MODEL_S1300i) {
+        /* get hardware status at least once - make S1300i work with scanimage */
+        ret = get_hardware_status(s);
+        /* if (ret != SANE_STATUS_GOOD) {
+            disconnect_fd(s);
+            DBG (5, "sane_open: get_hardware_status failed\n");
+            return ret;
+        } */
+    }
+
     DBG (10, "sane_open: finish\n");
 
     return SANE_STATUS_GOOD;
