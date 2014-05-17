@@ -211,7 +211,7 @@
   #define MAX3(a,b,c) ((a) > (b) ? ((a) > (c) ? a : c) : ((b) > (c) ? b : c))
 #endif
 
-unsigned char global_firmware_filename[PATH_MAX];
+static char *global_firmware_filename = NULL;
 
 /* values for SANE_DEBUG_EPJITSU env var:
  - errors           5
@@ -308,121 +308,120 @@ sane_init (SANE_Int * version_code, SANE_Auth_Callback authorize)
  * store in global device structs
  */
 SANE_Status
-sane_get_devices (const SANE_Device *** device_list, SANE_Bool local_only)
+sane_get_devices (const SANE_Device ***device_list, SANE_Bool local_only)
 {
     SANE_Status ret = SANE_STATUS_GOOD;
-    struct scanner * s;
-    struct scanner * prev = NULL;
+    struct scanner *s;
+    struct scanner *prev = NULL;
     char line[PATH_MAX];
-    const char *lp;
     FILE *fp;
-    int num_devices=0;
-    int i=0;
-  
+    int num_devices = 0;
+    int i = 0;
+
     local_only = local_only;        /* get rid of compiler warning */
-  
-    DBG (10, "sane_get_devices: start\n");
- 
+
+    DBG(10, "sane_get_devices: start\n");
+
     /* mark all existing scanners as missing, attach_one will remove mark */
-    for (s = scanner_devList; s; s = s->next) {
-      s->missing = 1;
+    for (s = scanner_devList; s != NULL; s = s->next) {
+        s->missing = 1;
     }
 
     sanei_usb_init();
-  
-    fp = sanei_config_open (CONFIG_FILE);
-  
-    if (fp) {
-  
-        DBG (15, "sane_get_devices: reading config file %s\n", CONFIG_FILE);
-  
-        while (sanei_config_read (line, PATH_MAX, fp)) {
-      
-            lp = line;
+
+    fp = sanei_config_open(CONFIG_FILE);
+
+    if (fp != NULL) {
+        DBG(15, "sane_get_devices: reading config file %s\n", CONFIG_FILE);
+
+        while (sanei_config_read(line, PATH_MAX, fp) != NULL) {
+            const char *lp = sanei_config_skip_whitespace(line);
 
             /* ignore comments */
             if (*lp == '#')
                 continue;
-      
+
             /* skip empty lines */
-            if (*lp == 0)
+            if (*lp == '\0')
                 continue;
-      
-            if ((strncmp ("firmware", lp, 8) == 0) && isspace (lp[8])) {
-                lp += 8;
-                lp = sanei_config_skip_whitespace (lp);
-                DBG (15, "sane_get_devices: firmware '%s'\n", lp);
-                strncpy((char *)global_firmware_filename,lp,PATH_MAX);
+
+            if ((strncmp("firmware", lp, 8) == 0) && isspace(lp[8])) {
+                if (global_firmware_filename != NULL)
+                    free(global_firmware_filename);
+                global_firmware_filename = NULL;
+
+                sanei_config_get_string(lp + 8, &global_firmware_filename);
+                if (global_firmware_filename != NULL)
+                    DBG(15, "sane_get_devices: firmware '%s'\n", global_firmware_filename);
+                else
+                    DBG(5, "sane_get_devices: firmware name missing\n");
             }
-            else if ((strncmp ("usb", lp, 3) == 0) && isspace (lp[3])) {
-                DBG (15, "sane_get_devices: looking for '%s'\n", lp);
+            else if ((strncmp("usb", lp, 3) == 0) && isspace(lp[3])) {
+                DBG(15, "sane_get_devices: looking for '%s'\n", lp);
                 sanei_usb_attach_matching_devices(lp, attach_one);
             }
-            else{
-                DBG (5, "sane_get_devices: config line \"%s\" ignored.\n", lp);
+            else {
+                DBG(5, "sane_get_devices: config line \"%s\" ignored.\n", lp);
             }
         }
-        fclose (fp);
+        fclose(fp);
     }
-  
     else {
-        DBG (5, "sane_get_devices: no config file '%s'!\n",
-          CONFIG_FILE);
+        DBG(5, "sane_get_devices: no config file '%s'!\n", CONFIG_FILE);
     }
 
-    /*delete missing scanners from list*/
-    for (s = scanner_devList; s;) {
-      if(s->missing){
-        DBG (5, "sane_get_devices: missing scanner %s\n",s->sane.name);
-  
-        /*splice s out of list by changing pointer in prev to next*/
-        if(prev){
-          prev->next = s->next;
-          free(s);
-          s=prev->next;
+    /* delete missing scanners from list */
+    for (s = scanner_devList; s != NULL; ) {
+        if (s->missing) {
+            DBG(5, "sane_get_devices: missing scanner %s\n", s->sane.name);
+
+            /* splice s out of list by changing pointer in prev to next */
+            if (prev != NULL) {
+                prev->next = s->next;
+                free(s);
+                s = prev->next;
+            }
+            /* remove s from head of list, using prev to cache it */
+            else {
+                prev = s;
+                s = s->next;
+                free(prev);
+                prev = NULL;
+
+                /* reset head to next s */
+                scanner_devList = s;
+            }
         }
-        /*remove s from head of list, using prev to cache it*/
-        else{
-          prev = s;
-          s = s->next;
-          free(prev);
-          prev=NULL;
-  
-          /*reset head to next s*/
-          scanner_devList = s;
+        else {
+            prev = s;
+            s = prev->next;
         }
-      }
-      else{
-        prev = s;
-        s=prev->next;
-      }
     }
-  
-    for (s = scanner_devList; s; s=s->next) {
-        DBG (15, "sane_get_devices: found scanner %s\n",s->sane.name);
+
+    for (s = scanner_devList; s != NULL; s = s->next) {
+        DBG(15, "sane_get_devices: found scanner %s\n", s->sane.name);
         num_devices++;
     }
-  
-    DBG (15, "sane_get_devices: found %d scanner(s)\n",num_devices);
 
-    if (sane_devArray)
-      free (sane_devArray);
-  
-    sane_devArray = calloc (num_devices + 1, sizeof (SANE_Device*));
-    if (!sane_devArray)
+    DBG(15, "sane_get_devices: found %d scanner(s)\n", num_devices);
+
+    if (sane_devArray != NULL)
+        free(sane_devArray);
+
+    sane_devArray = calloc(num_devices + 1, sizeof(SANE_Device *));
+    if (sane_devArray == NULL)
         return SANE_STATUS_NO_MEM;
-  
-    for (s = scanner_devList; s; s=s->next) {
-        sane_devArray[i++] = (SANE_Device *)&s->sane;
-    }
-    sane_devArray[i] = 0;
 
-    if(device_list){
-        *device_list = sane_devArray;
+    for (s = scanner_devList; s != NULL; s = s->next) {
+        sane_devArray[i++] = (SANE_Device *) &s->sane;
     }
- 
-    DBG (10, "sane_get_devices: finish\n");
-  
+    sane_devArray[i] = NULL;
+
+    if (device_list != NULL)
+        *device_list = sane_devArray;
+
+    DBG(10, "sane_get_devices: finish\n");
+
     return ret;
 }
 
@@ -716,7 +715,7 @@ load_fw (struct scanner *s)
         return SANE_STATUS_GOOD;
     }
     
-    if(!global_firmware_filename[0]){
+    if (global_firmware_filename == NULL){
         DBG (5, "load_fw: missing filename\n");
         return SANE_STATUS_NO_DOCS;
     }
