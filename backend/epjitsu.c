@@ -436,7 +436,7 @@ static SANE_Status
 attach_one (const char *name)
 {
     struct scanner *s;
-    int ret, i;
+    int ret;
   
     DBG (10, "attach_one: start '%s'\n", name);
   
@@ -628,24 +628,14 @@ attach_one (const char *name)
     }
      
     /* set SANE option 'values' to good defaults */
-    DBG (15, "attach_one: init options\n");
-  
-    /* go ahead and setup the first opt, because 
-     * frontend may call control_option on it 
-     * before calling get_option_descriptor 
-     */
-    memset (s->opt, 0, sizeof (s->opt));
-    for (i = 0; i < NUM_OPTIONS; ++i) {
-        s->opt[i].name = "filler";
-        s->opt[i].size = sizeof (SANE_Word);
-        s->opt[i].cap = SANE_CAP_INACTIVE;
+    ret = init_options(s);
+    if (ret != SANE_STATUS_GOOD) {
+        disconnect_fd(s);
+        free(s);
+        DBG(5, "attach_one: options failed\n");
+        return ret;
     }
-  
-    s->opt[OPT_NUM_OPTS].name = SANE_NAME_NUM_OPTIONS;
-    s->opt[OPT_NUM_OPTS].title = SANE_TITLE_NUM_OPTIONS;
-    s->opt[OPT_NUM_OPTS].desc = SANE_DESC_NUM_OPTIONS;
-    s->opt[OPT_NUM_OPTS].cap = SANE_CAP_SOFT_DETECT;
-  
+
     DBG (15, "attach_one: init settings\n");
     ret = change_params(s);
 
@@ -932,6 +922,37 @@ get_ident(struct scanner *s)
   
     DBG (10, "get_ident: finish\n");
     return ret;
+}
+
+/*
+ * This function presets the "option" array to blank
+ */
+static SANE_Status
+init_options (struct scanner *s)
+{
+    int i;
+
+    DBG(10, "init_options: start\n");
+
+    memset(s->opt, '\0', sizeof(s->opt));
+    for (i = 0; i < NUM_OPTIONS; i++) {
+        s->opt[i].name = "filler";
+        s->opt[i].size = sizeof(SANE_Word);
+        s->opt[i].cap = SANE_CAP_INACTIVE;
+    }
+
+    /* go ahead and setup the first opt, because
+     * frontend may call control_option on it
+     * before calling get_option_descriptor
+     */
+    s->opt[OPT_NUM_OPTS].name = SANE_NAME_NUM_OPTIONS;
+    s->opt[OPT_NUM_OPTS].title = SANE_TITLE_NUM_OPTIONS;
+    s->opt[OPT_NUM_OPTS].desc = SANE_DESC_NUM_OPTIONS;
+    s->opt[OPT_NUM_OPTS].cap = SANE_CAP_SOFT_DETECT;
+
+    DBG(10, "init_options: finish\n");
+
+    return SANE_STATUS_GOOD;
 }
 
 /*
