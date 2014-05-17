@@ -1601,7 +1601,7 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
         return status;
       }
 
-      /* may have been changed by constrain, so dont copy until now */
+      /* may have been changed by constraints, so don't copy until now */
       val_c = *(SANE_Word *)val;
 
       /*
