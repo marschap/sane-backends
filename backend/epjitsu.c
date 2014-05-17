@@ -490,143 +490,16 @@ attach_one (const char *name)
     DBG (15, "attach_one: Found %s scanner %s at %s\n",
       s->sane.vendor, s->sane.model, s->sane.name);
   
-    if (strstr (s->sane.model, "S1300i")){
-        unsigned char stat;
-
-        DBG (15, "attach_one: Found S1300i\n");
-
-        stat = get_stat(s);
-        if(stat & 0x01){
-          DBG (5, "attach_one: on USB power?\n");
-          s->usb_power=1;
-        }
-    
-        s->model = MODEL_S1300i;
-
-        s->has_adf = 1;
-        s->has_adf_duplex = 1;
-        s->min_res = 50;
-        s->max_res = 600;
-        s->adf_height_padding = 600;
-        /* Blue, Red, Green */
-        s->white_factor[0] = 1.0;
-        s->white_factor[1] = 0.93;
-        s->white_factor[2] = 0.98;
-
-        s->source = SOURCE_ADF_FRONT;
-        s->mode = MODE_LINEART;
-        s->resolution = 300;
-        s->page_height = 11.5 * 1200;
-        s->page_width  = 8.5 * 1200;
-
-        s->threshold = 120;
-        s->threshold_curve = 55;
-    }
-    else if (strstr (s->sane.model, "S300") || strstr (s->sane.model, "S1300")){
-        unsigned char stat;
-
-        DBG (15, "attach_one: Found S300/S1300\n");
-
-        stat = get_stat(s);
-        if(stat & 0x01){
-          DBG (5, "attach_one: on USB power?\n");
-          s->usb_power=1;
-        }
-    
-        s->model = MODEL_S300;
-
-        s->has_adf = 1;
-        s->has_adf_duplex = 1;
-        s->min_res = 50;
-        s->max_res = 600;
-        s->adf_height_padding = 600;
-        /* Blue, Red, Green */
-        s->white_factor[0] = 1.0;
-        s->white_factor[1] = 0.93;
-        s->white_factor[2] = 0.98;
-
-        s->source = SOURCE_ADF_FRONT;
-        s->mode = MODE_LINEART;
-        s->resolution = 300;
-        s->page_height = 11.5 * 1200;
-        s->page_width  = 8.5 * 1200;
-
-        s->threshold = 120;
-        s->threshold_curve = 55;
-    }
-    else if (strstr (s->sane.model, "S1100")){
-        DBG (15, "attach_one: Found S1100\n");
-        s->model = MODEL_S1100;
-
-        s->usb_power = 1;
-        s->has_adf = 1;
-        s->has_adf_duplex = 0;
-        s->min_res = 50;
-        s->max_res = 600;
-        s->adf_height_padding = 450;
-        /* Blue, Red, Green */
-        s->white_factor[0] = 0.95;
-        s->white_factor[1] = 1.0;
-        s->white_factor[2] = 1.0;
-
-        s->source = SOURCE_ADF_FRONT;
-        s->mode = MODE_LINEART;
-        s->resolution = 300;
-        s->page_height = 11.5 * 1200;
-        s->page_width  = 8.5 * 1200;
-
-        s->threshold = 120;
-        s->threshold_curve = 55;
-    }
-    else if (strstr (s->sane.model, "fi-60F")){
-        DBG (15, "attach_one: Found fi-60F\n");
-
-        s->model = MODEL_FI60F;
-
-        s->has_fb = 1;
-        s->min_res = 50;
-        s->max_res = 600;
-        /* Blue, Red, Green */
-        s->white_factor[0] = 1.0;
-        s->white_factor[1] = 0.93;
-        s->white_factor[2] = 0.98;
-
-        s->source = SOURCE_FLATBED;
-        s->mode = MODE_COLOR;
-        s->resolution = 300;
-        s->page_height = 5.83 * 1200;
-        s->page_width  = 4.1 * 1200;
-
-        s->threshold = 120;
-        s->threshold_curve = 55;
+    /* clean up the scanner struct based on model */
+    /* this is the big piece of model specific code */
+    ret = init_model(s);
+    if (ret != SANE_STATUS_GOOD) {
+        disconnect_fd(s);
+        free(s);
+        DBG(5, "attach_one: model failed\n");
+        return ret;
     }
 
-    else if (strstr (s->sane.model, "fi-65F")){
-        DBG (15, "attach_one: Found fi-65F\n");
-
-        s->model = MODEL_FI65F;
-
-        s->has_fb = 1;
-        s->min_res = 50;
-        s->max_res = 600;
-        /* Blue, Red, Green */
-        s->white_factor[0] = 1.0;
-        s->white_factor[1] = 0.93;
-        s->white_factor[2] = 0.98;
-
-        s->source = SOURCE_FLATBED;
-        s->mode = MODE_COLOR;
-        s->resolution = 300;
-        s->page_height = 5.83 * 1200;
-        s->page_width  = 4.1 * 1200;
-
-        s->threshold = 120;
-        s->threshold_curve = 55;
-    }
-    else{
-        DBG (15, "attach_one: Found other\n");
-    }
-     
     /* set SANE option 'values' to good defaults */
     ret = init_options(s);
     if (ret != SANE_STATUS_GOOD) {
@@ -922,6 +795,157 @@ get_ident(struct scanner *s)
   
     DBG (10, "get_ident: finish\n");
     return ret;
+}
+
+/*
+ * get model specific info that is not in vpd, and correct
+ * errors in vpd data. struct is already initialized to 0.
+ */
+static SANE_Status
+init_model (struct scanner *s)
+{
+    DBG(10, "init_model: start\n");
+
+    if (strstr (s->sane.model, "S1300i")){
+        unsigned char stat;
+
+        DBG (15, "init_model: Found S1300i\n");
+
+        stat = get_stat(s);
+        if(stat & 0x01){
+          DBG (5, "init_model: on USB power?\n");
+          s->usb_power=1;
+        }
+    
+        s->model = MODEL_S1300i;
+
+        s->has_adf = 1;
+        s->has_adf_duplex = 1;
+        s->min_res = 50;
+        s->max_res = 600;
+        s->adf_height_padding = 600;
+        /* Blue, Red, Green */
+        s->white_factor[0] = 1.0;
+        s->white_factor[1] = 0.93;
+        s->white_factor[2] = 0.98;
+
+        s->source = SOURCE_ADF_FRONT;
+        s->mode = MODE_LINEART;
+        s->resolution = 300;
+        s->page_height = 11.5 * 1200;
+        s->page_width  = 8.5 * 1200;
+
+        s->threshold = 120;
+        s->threshold_curve = 55;
+    }
+    else if (strstr (s->sane.model, "S300") || strstr (s->sane.model, "S1300")){
+        unsigned char stat;
+
+        DBG (15, "init_model: Found S300/S1300\n");
+
+        stat = get_stat(s);
+        if(stat & 0x01){
+          DBG (5, "init_model: on USB power?\n");
+          s->usb_power=1;
+        }
+    
+        s->model = MODEL_S300;
+
+        s->has_adf = 1;
+        s->has_adf_duplex = 1;
+        s->min_res = 50;
+        s->max_res = 600;
+        s->adf_height_padding = 600;
+        /* Blue, Red, Green */
+        s->white_factor[0] = 1.0;
+        s->white_factor[1] = 0.93;
+        s->white_factor[2] = 0.98;
+
+        s->source = SOURCE_ADF_FRONT;
+        s->mode = MODE_LINEART;
+        s->resolution = 300;
+        s->page_height = 11.5 * 1200;
+        s->page_width  = 8.5 * 1200;
+
+        s->threshold = 120;
+        s->threshold_curve = 55;
+    }
+    else if (strstr (s->sane.model, "S1100")){
+        DBG (15, "init_model: Found S1100\n");
+        s->model = MODEL_S1100;
+
+        s->usb_power = 1;
+        s->has_adf = 1;
+        s->has_adf_duplex = 0;
+        s->min_res = 50;
+        s->max_res = 600;
+        s->adf_height_padding = 450;
+        /* Blue, Red, Green */
+        s->white_factor[0] = 0.95;
+        s->white_factor[1] = 1.0;
+        s->white_factor[2] = 1.0;
+
+        s->source = SOURCE_ADF_FRONT;
+        s->mode = MODE_LINEART;
+        s->resolution = 300;
+        s->page_height = 11.5 * 1200;
+        s->page_width  = 8.5 * 1200;
+
+        s->threshold = 120;
+        s->threshold_curve = 55;
+    }
+    else if (strstr (s->sane.model, "fi-60F")){
+        DBG (15, "init_model: Found fi-60F\n");
+
+        s->model = MODEL_FI60F;
+
+        s->has_fb = 1;
+        s->min_res = 50;
+        s->max_res = 600;
+        /* Blue, Red, Green */
+        s->white_factor[0] = 1.0;
+        s->white_factor[1] = 0.93;
+        s->white_factor[2] = 0.98;
+
+        s->source = SOURCE_FLATBED;
+        s->mode = MODE_COLOR;
+        s->resolution = 300;
+        s->page_height = 5.83 * 1200;
+        s->page_width  = 4.1 * 1200;
+
+        s->threshold = 120;
+        s->threshold_curve = 55;
+    }
+
+    else if (strstr (s->sane.model, "fi-65F")){
+        DBG (15, "init_model: Found fi-65F\n");
+
+        s->model = MODEL_FI65F;
+
+        s->has_fb = 1;
+        s->min_res = 50;
+        s->max_res = 600;
+        /* Blue, Red, Green */
+        s->white_factor[0] = 1.0;
+        s->white_factor[1] = 0.93;
+        s->white_factor[2] = 0.98;
+
+        s->source = SOURCE_FLATBED;
+        s->mode = MODE_COLOR;
+        s->resolution = 300;
+        s->page_height = 5.83 * 1200;
+        s->page_width  = 4.1 * 1200;
+
+        s->threshold = 120;
+        s->threshold_curve = 55;
+    }
+    else{
+        DBG (15, "init_model: Found other\n");
+    }
+     
+    DBG(10, "init_model: finish\n");
+
+    return SANE_STATUS_GOOD;
 }
 
 /*
