@@ -364,6 +364,7 @@ static SANE_Status read_from_scanner_gray(struct scanner *s);
 /* commands */
 static SANE_Status load_fw(struct scanner *s);
 static SANE_Status get_ident(struct scanner *s);
+static SANE_Status init_model(struct scanner *s);
 static SANE_Status init_options(struct scanner *s);
 
 static SANE_Status change_params(struct scanner *s);
