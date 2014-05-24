@@ -1166,7 +1166,7 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     /* values stored in 1200 dpi units */
     /* must be converted to MM for sane */
     s->tl_x_range.min = SCANNER_UNIT_TO_FIXED_MM(0);
-    s->tl_x_range.max = SCANNER_UNIT_TO_FIXED_MM(get_page_width(s)-s->min_x);
+    s->tl_x_range.max = SCANNER_UNIT_TO_FIXED_MM(MAX(0, get_page_width(s)-s->min_x));
     s->tl_x_range.quant = MM_PER_UNIT_FIX;
 
     opt->name = SANE_NAME_SCAN_TL_X;
@@ -1185,7 +1185,7 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     /* values stored in 1200 dpi units */
     /* must be converted to MM for sane */
     s->tl_y_range.min = SCANNER_UNIT_TO_FIXED_MM(0);
-    s->tl_y_range.max = SCANNER_UNIT_TO_FIXED_MM(get_page_height(s)-s->min_y);
+    s->tl_y_range.max = SCANNER_UNIT_TO_FIXED_MM(MAX(0, get_page_height(s)-s->min_y));
     s->tl_y_range.quant = MM_PER_UNIT_FIX;
 
     opt->name = SANE_NAME_SCAN_TL_Y;
@@ -1203,7 +1203,7 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     /* values stored in 1200 dpi units */
     /* must be converted to MM for sane */
     s->br_x_range.min = SCANNER_UNIT_TO_FIXED_MM(s->min_x);
-    s->br_x_range.max = SCANNER_UNIT_TO_FIXED_MM(get_page_width(s));
+    s->br_x_range.max = SCANNER_UNIT_TO_FIXED_MM(MAX(s->min_x, get_page_width(s)));
     s->br_x_range.quant = MM_PER_UNIT_FIX;
 
     opt->name = SANE_NAME_SCAN_BR_X;
@@ -1222,7 +1222,7 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     /* values stored in 1200 dpi units */
     /* must be converted to MM for sane */
     s->br_y_range.min = SCANNER_UNIT_TO_FIXED_MM(s->min_y);
-    s->br_y_range.max = SCANNER_UNIT_TO_FIXED_MM(get_page_height(s));
+    s->br_y_range.max = SCANNER_UNIT_TO_FIXED_MM(MAX(s->min_y, get_page_height(s)));
     s->br_y_range.quant = MM_PER_UNIT_FIX;
 
     opt->name = SANE_NAME_SCAN_BR_Y;
