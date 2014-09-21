@@ -1970,11 +1970,6 @@ change_params(struct scanner *s)
     s->max_y = PIX_TO_SCANNER_UNIT( settings[i].max_y, settings[i].y_res );
     s->min_y = PIX_TO_SCANNER_UNIT( settings[i].min_y, settings[i].y_res );
 
-    /* wrong place for this?*/
-    s->page_width = s->max_x;
-    s->br_x = s->max_x;
-    s->br_y = s->max_y;
-
     /*current dpi*/
     s->setWindowCoarseCal = settings[i].sw_coarsecal;
     s->setWindowCoarseCalLen = SET_WINDOW_LEN;
@@ -2019,6 +2014,8 @@ change_params(struct scanner *s)
        s->page_height = s->min_y;
     if (s->tl_y + s->page_height > s->max_y)
        s->tl_y = s->max_y - s->adf_height_padding - s->page_height ;
+    if (s->tl_y < 0)
+       s->tl_y = 0;
 
     if (s->page_height > 0) {
         s->br_y = s->tl_y + s->page_height;
