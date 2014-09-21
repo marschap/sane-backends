@@ -1712,8 +1712,8 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
               return SANE_STATUS_GOOD;
 
           s->page_width = FIXED_MM_TO_SCANNER_UNIT(val_c);
-          *info |= SANE_INFO_RELOAD_OPTIONS;
-          return SANE_STATUS_GOOD;
+          *info |= SANE_INFO_RELOAD_PARAMS | SANE_INFO_RELOAD_OPTIONS;
+          return change_params(s);
 
         case OPT_PAGE_HEIGHT:
           if (s->page_height == FIXED_MM_TO_SCANNER_UNIT(val_c))
