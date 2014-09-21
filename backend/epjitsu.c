@@ -2174,7 +2174,7 @@ change_params(struct scanner *s)
       /* adf with specified paper size */
       s->front.height = SCANNER_UNIT_TO_PIX(s->page_height, s->front.y_res);
     }
-    s->front.width_pix = s->block_img.width_pix;
+    s->front.width_pix = SCANNER_UNIT_TO_PIX(s->page_width, s->resolution * img_heads);
     s->front.x_start_offset = (s->block_xfr.image->width_pix - s->front.width_pix)/2;
     switch (s->mode) {
       case MODE_COLOR:
